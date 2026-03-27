@@ -1,0 +1,13 @@
+{
+  "name": "kaneo-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kaneo agent skills repository",
+  "license": "MIT",
+  "scripts": {
+    "validate": "npm run validate:scope && npm run validate:plugins && npm run validate:skills",
+    "validate:scope": "node scripts/validate-scope.mjs",
+    "validate:plugins": "node scripts/validate-marketplace.mjs",
+    "validate:skills": "npx skills-ref validate ./skills/kaneo"
+  }
+}

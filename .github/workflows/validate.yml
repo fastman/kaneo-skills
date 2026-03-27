@@ -1,0 +1,27 @@
+name: Validate Skills
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate repository scope
+        run: node scripts/validate-scope.mjs
+
+      - name: Validate marketplace manifest
+        run: node scripts/validate-marketplace.mjs
+
+      - name: Validate skill spec
+        run: npx skills-ref validate ./skills/kaneo

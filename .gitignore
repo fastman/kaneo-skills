@@ -1,0 +1,23 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build and reports
+dist/
+coverage/
+
+# Environment
+.env
+.env.*
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local agent state
+docs/PROGRESS.md
+docs/agent-sessions/

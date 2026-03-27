@@ -1,0 +1,22 @@
+{
+  "name": "kaneo-skills",
+  "owner": {
+    "name": "fastman",
+    "email": "fastman@users.noreply.github.com"
+  },
+  "metadata": {
+    "description": "Kaneo skill bundle for task and project management",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "kaneo",
+      "description": "Manage tasks, comments, labels, and project workflows in Kaneo via API.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/kaneo"
+      ]
+    }
+  ]
+}
