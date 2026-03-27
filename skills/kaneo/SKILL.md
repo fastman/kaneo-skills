@@ -7,7 +7,7 @@ metadata:
   audience: developers
   topic: project-management
   api: kaneo
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Kaneo — Task Management
@@ -31,11 +31,37 @@ Do not use this skill for:
 
 ## Before starting
 
-Check that all environment variables are set before making any requests:
-- `KANEO_BASE_URL` — Kaneo instance URL **with `/api` suffix** (e.g. `https://your-kaneo-instance.com/api`)
-- `KANEO_TOKEN` — Bearer token from `Settings → API Keys → Create API Key`
+Resolve credentials in this order before making requests:
+1. Process environment (`KANEO_BASE_URL`, `KANEO_TOKEN`)
+2. Workspace `.env`
+3. Workspace `.env.local` (if present)
 
-If not set, ask the user to provide them or set them in the environment.
+Required variables:
+- `KANEO_BASE_URL` — Kaneo instance URL **with `/api` suffix** (e.g. `https://your-kaneo-instance.com/api`)
+- `KANEO_TOKEN` — Bearer token from `Settings -> API Keys -> Create API Key`
+
+If still missing after checking env files, ask the user to set variables locally. Do not ask for raw token values in chat.
+
+When checking `.env` files:
+- read only what is required to detect variable presence
+- never print `.env` content
+- never echo, paste, or summarize secret values
+
+### Secret handling (strict)
+
+`KANEO_TOKEN` is secret and must never be exposed.
+
+Forbidden in all cases:
+- exposing token values in assistant replies
+- exposing token values in command output relays
+- exposing token values in logs, errors, examples, or markdown
+- exposing token values in any prompt payload sent to sub-agents/models
+- using commands that may leak secrets in traces (`set -x`, verbose curl with headers, etc.)
+
+Allowed behavior:
+- reference only variable names (`KANEO_TOKEN`, `KANEO_BASE_URL`)
+- use redaction when showing auth headers (`Authorization: Bearer ***`)
+- use environment expansion at runtime (`$KANEO_TOKEN`) without printing its value
 
 Also, when using this skill inside a project repository:
 - always read `docs/LABELS.md` at the start of the session (if it exists)
@@ -45,6 +71,25 @@ Also, when using this skill inside a project repository:
 ## Setup
 
 All requests require `Authorization: Bearer $KANEO_TOKEN` and `Content-Type: application/json`.
+
+### Safe shell setup (no secret output)
+
+Use one of these patterns to load env values without printing secrets:
+
+```bash
+# Option A: values already exported in shell
+test -n "$KANEO_BASE_URL" && test -n "$KANEO_TOKEN"
+
+# Option B: load from workspace .env
+set -a
+[ -f .env ] && . ./.env
+[ -f .env.local ] && . ./.env.local
+set +a
+
+test -n "$KANEO_BASE_URL" && test -n "$KANEO_TOKEN"
+```
+
+Do not run commands that print secrets (for example `cat .env`, `env`, `printenv KANEO_TOKEN`).
 
 ## Project Label Registry (`docs/LABELS.md`)
 
