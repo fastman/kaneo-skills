@@ -2,6 +2,17 @@
 
 All notable changes to this skills repository are documented here.
 
+## 2.0.0 - 2026-04-13
+
+- **Breaking change**: Rewrote skill to use `mcp-kaneo` MCP server instead of direct curl/REST calls
+- Added MCP configuration for Claude Code (`.mcp.json`)
+- Added MCP configuration for OpenCode (`.opencode/mcp.json`)
+- Added MCP tool references (21 tools) replacing curl examples
+- Removed all curl command documentation
+- Removed Key IDs section (MCP handles ID discovery)
+- Added multi-agent setup documentation (Claude Code, OpenCode, Cursor, Cline)
+- Updated frontmatter and version to `2.0.0`
+
 ## 1.2.0 - 2026-03-27
 
 - Added `.env` and `.env.local` credential discovery guidance for `KANEO_BASE_URL` and `KANEO_TOKEN`.

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kaneo": {
+      "command": "npx",
+      "args": ["-y", "mcp-kaneo"],
+      "env": {
+        "KANEO_TOKEN": "${KANEO_TOKEN}",
+        "KANEO_BASE_URL": "${KANEO_BASE_URL}"
+      }
+    }
+  }
+}

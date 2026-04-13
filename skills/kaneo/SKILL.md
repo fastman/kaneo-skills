@@ -1,18 +1,18 @@
 ---
 name: kaneo
-description: Manage tasks in Kaneo — create, read, update, delete tasks, add comments, search, and manage projects via the Kaneo API. Use when asked to track work, create tasks, update descriptions, add comments, or move tasks between columns in a Kaneo project.
+description: Manage tasks in Kaneo — create, read, update, delete tasks, add comments, search, and manage projects via the Kaneo MCP server. Use when asked to track work, create tasks, update descriptions, add comments, or move tasks between columns in a Kaneo project.
 license: MIT
 compatibility: opencode
 metadata:
   audience: developers
   topic: project-management
   api: kaneo
-  version: 1.2.0
+  version: 2.0.0
 ---
 
 # Kaneo — Task Management
 
-Manage tasks in a Kaneo project management workspace via the REST API.
+Manage tasks in a Kaneo project management workspace via the MCP server.
 
 ## When to use me
 
@@ -29,67 +29,75 @@ Do not use this skill for:
 - local TODO or task-list files in the repository
 - generic planning requests that do not require Kaneo API calls
 
-## Before starting
+## MCP Configuration
 
-Resolve credentials in this order before making requests:
-1. Process environment (`KANEO_BASE_URL`, `KANEO_TOKEN`)
-2. Workspace `.env`
-3. Workspace `.env.local` (if present)
+This skill uses the `mcp-kaneo` MCP server to communicate with Kaneo. The MCP server must be configured in your agent.
 
-Required variables:
-- `KANEO_BASE_URL` — Kaneo instance URL **with `/api` suffix** (e.g. `https://your-kaneo-instance.com/api`)
-- `KANEO_TOKEN` — Bearer token from `Settings -> API Keys -> Create API Key`
+### Environment Variables
 
-If still missing after checking env files, ask the user to set variables locally. Do not ask for raw token values in chat.
+Required variables (set in your agent's MCP config):
+- `KANEO_BASE_URL` — Kaneo instance URL **with `/api` suffix**
+- `KANEO_TOKEN` — API token from Kaneo `Settings → API Keys → Create API Key`
 
-When checking `.env` files:
-- read only what is required to detect variable presence
-- never print `.env` content
-- never echo, paste, or summarize secret values
+### Agent Setup
+
+#### Claude Code
+```json
+{
+  "mcpServers": {
+    "kaneo": {
+      "command": "npx",
+      "args": ["-y", "mcp-kaneo"],
+      "env": {
+        "KANEO_TOKEN": "${KANEO_TOKEN}",
+        "KANEO_BASE_URL": "${KANEO_BASE_URL}"
+      }
+    }
+  }
+}
+```
+
+#### OpenCode
+```json
+{
+  "mcp": {
+    "kaneo": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-kaneo"],
+      "environment": {
+        "KANEO_BASE_URL": "${KANEO_BASE_URL}",
+        "KANEO_TOKEN": "${KANEO_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+#### Cursor / Cline
+```json
+{
+  "mcpServers": {
+    "kaneo": {
+      "command": "npx",
+      "args": ["-y", "mcp-kaneo"]
+    }
+  }
+}
+```
+
+When the MCP server is configured, all Kaneo tools are available automatically.
 
 ### Secret handling (strict)
 
 `KANEO_TOKEN` is secret and must never be exposed.
 
-Forbidden in all cases:
-- exposing token values in assistant replies
-- exposing token values in command output relays
-- exposing token values in logs, errors, examples, or markdown
-- exposing token values in any prompt payload sent to sub-agents/models
-- using commands that may leak secrets in traces (`set -x`, verbose curl with headers, etc.)
+Forbidden:
+- exposing token values in assistant responses
+- including tokens in logs, errors, examples, or markdown
 
-Allowed behavior:
-- reference only variable names (`KANEO_TOKEN`, `KANEO_BASE_URL`)
-- use redaction when showing auth headers (`Authorization: Bearer ***`)
-- use environment expansion at runtime (`$KANEO_TOKEN`) without printing its value
-
-Also, when using this skill inside a project repository:
-- always read `docs/LABELS.md` at the start of the session (if it exists)
-- if `docs/LABELS.md` does not exist, create it before first label operation
-- treat `docs/LABELS.md` as the canonical per-project label glossary
-
-## Setup
-
-All requests require `Authorization: Bearer $KANEO_TOKEN` and `Content-Type: application/json`.
-
-### Safe shell setup (no secret output)
-
-Use one of these patterns to load env values without printing secrets:
-
-```bash
-# Option A: values already exported in shell
-test -n "$KANEO_BASE_URL" && test -n "$KANEO_TOKEN"
-
-# Option B: load from workspace .env
-set -a
-[ -f .env ] && . ./.env
-[ -f .env.local ] && . ./.env.local
-set +a
-
-test -n "$KANEO_BASE_URL" && test -n "$KANEO_TOKEN"
-```
-
-Do not run commands that print secrets (for example `cat .env`, `env`, `printenv KANEO_TOKEN`).
+Allowed:
+- reference variable names only (`KANEO_TOKEN`)
+- use redaction (`Authorization: Bearer ***`)
 
 ## Project Label Registry (`docs/LABELS.md`)
 
@@ -97,14 +105,10 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 
 ### Required behavior
 
-1. **Read at start**
-   - On first Kaneo action in a session, read `docs/LABELS.md`.
-2. **Create if missing**
-   - If missing, create it using the template below.
-3. **Keep in sync**
-   - After any label change in Kaneo (create/update/delete/attach/detach), update `docs/LABELS.md` in the same run.
-4. **Reconcile from API**
-   - Use `GET /label/workspace/{workspaceId}` as source of truth for existing labels.
+1. **Read at start** — On first Kaneo action, read `docs/LABELS.md`.
+2. **Create if missing** — If missing, create it before first label operation.
+3. **Keep in sync** — After any label change, update `docs/LABELS.md`.
+4. **Reconcile from MCP** — Use `kaneo_list_labels` as source of truth.
 
 ### File template
 
@@ -120,8 +124,8 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 
 | Label | Color | Meaning | Usage Guidelines | Status |
 |---|---|---|---|---|
-| bug | #ef4444 | Defect in expected behavior | Use for reproducible issues with clear steps | active |
-| blocked | #f59e0b | Work cannot proceed | Add blocker reason and dependency in task description | active |
+| bug | #ef4444 | Defect in expected behavior | Use for reproducible issues | active |
+| blocked | #f59e0b | Work cannot proceed | Add blocker reason in task | active |
 
 ## Notes
 - Labels are workspace-scoped in Kaneo.
@@ -130,71 +134,67 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 
 ### Sync rules
 
-- New API label missing in file → add row with `Meaning: TODO` and `Status: active`.
-- API label renamed/recolored → update row.
-- Deleted API label still in file → mark `Status: deprecated` (or remove if user requested strict pruning).
-- Keep `Last synced` current whenever labels are reconciled.
+- New label in API but missing in file → add row with `Meaning: TODO`
+- Label renamed or recolored → update the row
+- Label deleted in API but in file → mark `Status: deprecated`
+- Keep `Last synced` current
 
-## Key IDs
+---
 
-Most endpoints need one or more of these IDs. Gather them first:
+## MCP Tools Reference
 
- | ID            | How to get                                                       |
- |---------------|------------------------------------------------------------------|
- | `workspaceId` | `GET $KANEO_BASE_URL/auth/organization/list` → array item `id`   |
- | `projectId`   | `GET $KANEO_BASE_URL/project?workspaceId=<workspaceId>` → `id`   |
- | `taskId`      | `GET $KANEO_BASE_URL/task/tasks/<projectId>` → `id`              |
- | `activityId`  | `GET $KANEO_BASE_URL/activity/<taskId>` → `id` of type `comment` |
- | `labelId`     | `GET $KANEO_BASE_URL/label/workspace/<workspaceId>` → `id`       |
+### Workspaces
 
-### List organizations
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/auth/organization/list"
-```
+| Tool | Description |
+|------|-------------|
+| `kaneo_list_workspaces` | List all accessible workspaces |
 
-### Create a workspace
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "<name>", "slug": "<slug>"}' \
-  "$KANEO_BASE_URL/auth/organization/create"
-```
+### Projects
 
-### List projects in a workspace
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/project?workspaceId=<workspaceId>"
-```
+| Tool | Description |
+|------|-------------|
+| `kaneo_list_projects` | List projects in a workspace |
+| `kaneo_get_project` | Get project details |
+| `kaneo_create_project` | Create a new project |
 
-### Create a project
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "<name>", "workspaceId": "<workspaceId>", "slug": "<slug>", "icon": "<emoji>"}' \
-  "$KANEO_BASE_URL/project"
-```
+### Tasks
 
-### List tasks in a project
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/task/tasks/<projectId>"
-```
+| Tool | Description |
+|------|-------------|
+| `kaneo_create_task` | Create a new task |
+| `kaneo_get_task` | Get task details |
+| `kaneo_update_task_title` | Update task title |
+| `kaneo_update_task_description` | Update task description |
+| `kaneo_update_task_status` | Update task status (move to column) |
+| `kaneo_update_task_priority` | Update task priority |
+| `kaneo_update_task_assignee` | Update task assignee |
+| `kaneo_update_task_due_date` | Update task due date |
+| `kaneo_delete_task` | Delete a task |
 
-### Get columns in a project
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/column/<projectId>"
-```
-Returns column `id` and `slug`. Use the `slug` for the `status` field.
+### Labels
 
-### List labels in a workspace
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/label/workspace/<workspaceId>"
-```
+| Tool | Description |
+|------|-------------|
+| `kaneo_list_labels` | List workspace labels |
+| `kaneo_create_label` | Create a new label |
+| `kaneo_update_label` | Update label name or color |
+| `kaneo_delete_label` | Delete a label |
+| `kaneo_attach_label` | Attach label to task |
+| `kaneo_detach_label` | Detach label from task |
+| `kaneo_list_task_labels` | List labels on a task |
+
+### Comments
+
+| Tool | Description |
+|------|-------------|
+| `kaneo_add_comment` | Add comment to task |
+| `kaneo_list_comments` | List comments on task |
+
+### Search
+
+| Tool | Description |
+|------|-------------|
+| `kaneo_search` | Search tasks, projects, workspaces |
 
 ---
 
@@ -206,500 +206,66 @@ curl -H "Authorization: Bearer $KANEO_TOKEN" \
 | `projectId` | string | Required on create |
 | `title` | string | Required on create |
 | `description` | string | Markdown supported |
-| `status` | string | Column **slug** (e.g. `"to-do"`, `"in-progress"`, `"planned"`) |
+| `status` | string | Column slug (e.g. `to-do`, `in-progress`) |
 | `priority` | enum | `no-priority`, `low`, `medium`, `high`, `urgent` |
 | `dueDate` | string | ISO 8601 |
-| `userId` | string | Assignee |
-| `position` | number | Ordering within column |
-| `number` | number | Read-only, human-readable |
-| `createdAt` | string | Read-only |
-
-> `columnId` is **not** needed on create or update — the API derives it automatically from `status`.
-
----
-
-## Create a task
-
-```
-POST $KANEO_BASE_URL/task/<projectId>
-```
-
-Required fields: `title`, `description`, `priority`, `status`.
-
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Implement user authentication",
-    "description": "Add OAuth2 login with Google and GitHub",
-    "priority": "high",
-    "status": "to-do"
-  }' \
-  "$KANEO_BASE_URL/task/<projectId>"
-```
-
----
-
-## Get a task
-
-```
-GET $KANEO_BASE_URL/task/<taskId>
-```
-
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/task/<taskId>"
-```
-
----
-
-## Update task title
-
-```
-PUT $KANEO_BASE_URL/task/title/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "New title"}' \
-  "$KANEO_BASE_URL/task/title/<taskId>"
-```
-
----
-
-## Update task description
-
-```
-PUT $KANEO_BASE_URL/task/description/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"description": "Updated description"}' \
-  "$KANEO_BASE_URL/task/description/<taskId>"
-```
-
----
-
-## Update task status (move to column)
-
-```
-PUT $KANEO_BASE_URL/task/status/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "in-progress"}' \
-  "$KANEO_BASE_URL/task/status/<taskId>"
-```
-
-> `status` must be the column **slug** (e.g. `"in-progress"`, `"to-do"`, `"done"`, `"planned"`), **not** the display name.
-
----
-
-## Update task priority
-
-```
-PUT $KANEO_BASE_URL/task/priority/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"priority": "urgent"}' \
-  "$KANEO_BASE_URL/task/priority/<taskId>"
-```
-
-Valid values: `no-priority`, `low`, `medium`, `high`, `urgent`.
-
----
-
-## Update task assignee
-
-```
-PUT $KANEO_BASE_URL/task/assignee/<taskId>
-```
-
-```bash
-# Assign
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "<userId>"}' \
-  "$KANEO_BASE_URL/task/assignee/<taskId>"
-
-# Unassign
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": null}' \
-  "$KANEO_BASE_URL/task/assignee/<taskId>"
-```
-
----
-
-## Update task due date
-
-```
-PUT $KANEO_BASE_URL/task/due-date/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"dueDate": "2026-04-15T23:59:00Z"}' \
-  "$KANEO_BASE_URL/task/due-date/<taskId>"
-```
-
----
-
-## Update all task fields at once
-
-```
-PUT $KANEO_BASE_URL/task/<taskId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "...",
-    "description": "...",
-    "status": "in-progress",
-    "priority": "high",
-    "projectId": "...",
-    "position": 0
-  }' \
-  "$KANEO_BASE_URL/task/<taskId>"
-```
-
-Required: `title`, `description`, `status`, `priority`, `projectId`, `position`.
-
----
-
-## Delete a task
-
-```
-DELETE $KANEO_BASE_URL/task/<taskId>
-```
-
-```bash
-curl -X DELETE \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  "$KANEO_BASE_URL/task/<taskId>"
-```
+| `userId` | string | Assignee user ID |
 
 ---
 
 ## Subtasks
 
-The API has no `parentTaskId` field. To represent subtasks:
-1. Create a task with parent reference in description (e.g. `"[Parent #12] Fix login bug"`)
-2. Or use task number reference in description to link parent and child
+Kaneo has no native subtask feature. Use this convention:
+- Create a task and reference the parent in the description: `[Parent #12] Fix login bug`
+- Or reference child tasks in the parent: `[Child #13], [Child #14]`
+
+This is a community convention, not an API feature.
 
 ---
 
-## Labels
+## Usage Examples
 
-Use labels to categorize tasks (e.g. `bug`, `frontend`, `blocked`).
-
-After label operations, immediately sync `docs/LABELS.md` (see Project Label Registry section).
-
-### Label Fields
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | Read-only |
-| `name` | string | Required on create |
-| `color` | string | Required on create (hex string like `#22c55e`) |
-| `workspaceId` | string | Required on create |
-| `taskId` | string\|null | Optional on create; can be attached/detached later |
-| `createdAt` | string | Read-only |
-
-### Create a label
-
+### Create a task
 ```
-POST $KANEO_BASE_URL/label
+Create a task in kaneo called "Fix login bug" with high priority
 ```
+Uses: `kaneo_create_task`
 
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "frontend",
-    "color": "#22c55e",
-    "workspaceId": "<workspaceId>"
-  }' \
-  "$KANEO_BASE_URL/label"
+### List tasks
 ```
-
-### List workspace labels
-
+List my kaneo tasks in the "Frontend" project
 ```
-GET $KANEO_BASE_URL/label/workspace/<workspaceId>
+Uses: `kaneo_list_projects` → filter tasks
+
+### Update task status
 ```
-
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/label/workspace/<workspaceId>"
+Move the task "Fix login bug" to in-progress
 ```
+Uses: `kaneo_update_task_status`
 
-### Get one label
-
+### Add a label
 ```
-GET $KANEO_BASE_URL/label/<labelId>
+Create a label "bug" with color #ef4444 and attach it to task #5
 ```
+Uses: `kaneo_create_label` → `kaneo_attach_label`
 
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/label/<labelId>"
+### Search tasks
 ```
-
-### Update a label
-
+Find all tasks with "authentication" in the title
 ```
-PUT $KANEO_BASE_URL/label/<labelId>
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "backend", "color": "#3b82f6"}' \
-  "$KANEO_BASE_URL/label/<labelId>"
-```
-
-### Delete a label
-
-```
-DELETE $KANEO_BASE_URL/label/<labelId>
-```
-
-```bash
-curl -X DELETE \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  "$KANEO_BASE_URL/label/<labelId>"
-```
-
-### Attach label to task
-
-```
-PUT $KANEO_BASE_URL/label/<labelId>/task
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"taskId": "<taskId>"}' \
-  "$KANEO_BASE_URL/label/<labelId>/task"
-```
-
-### Detach label from task
-
-```
-DELETE $KANEO_BASE_URL/label/<labelId>/task
-```
-
-```bash
-curl -X DELETE \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  "$KANEO_BASE_URL/label/<labelId>/task"
-```
-
-### List labels on a task
-
-```
-GET $KANEO_BASE_URL/label/task/<taskId>
-```
-
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/label/task/<taskId>"
-```
-
----
-
-## Comments
-
-### Add a comment to a task
-
-```
-POST $KANEO_BASE_URL/activity/comment
-```
-
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "taskId": "<taskId>",
-    "comment": "This is blocked by the database migration PR"
-  }' \
-  "$KANEO_BASE_URL/activity/comment"
-```
-
-### List all activities on a task
-
-```
-GET $KANEO_BASE_URL/activity/<taskId>
-```
-
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/activity/<taskId>"
-```
-
-### Edit a comment
-
-```
-PUT $KANEO_BASE_URL/activity/comment
-```
-
-```bash
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "activityId": "<activityId>",
-    "comment": "Updated comment text"
-  }' \
-  "$KANEO_BASE_URL/activity/comment"
-```
-
-### Delete a comment
-
-```
-DELETE $KANEO_BASE_URL/activity/comment
-```
-
-```bash
-curl -X DELETE \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"activityId": "<activityId>"}' \
-  "$KANEO_BASE_URL/activity/comment"
-```
-
----
-
-## Search
-
-```
-GET $KANEO_BASE_URL/search?q=<query>&type=tasks&workspaceId=<workspaceId>
-```
-
-```bash
-curl -H "Authorization: Bearer $KANEO_TOKEN" \
-     "$KANEO_BASE_URL/search?q=authentication&type=tasks&workspaceId=<workspaceId>"
-```
-
-Query params:
-- `q` (required) — search query
-- `type` — `all`, `tasks`, `projects`, `workspaces`, `comments`, `activities`
-- `workspaceId` — filter by workspace
-- `projectId` — filter by project
-- `limit` — 1-50, default 20
-- `userEmail` — filter by assignee
-
----
-
-## Common Workflows
-
-### Create task and move to in progress
-```bash
-# Create
-TASK=$(curl -s -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "...", "description": "...", "priority": "medium", "status": "to-do"}' \
-  "$KANEO_BASE_URL/task/<projectId>")
-TASK_ID=$(echo $TASK | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-
-# Move to In Progress
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "in-progress"}' \
-  "$KANEO_BASE_URL/task/status/$TASK_ID"
-```
-
-### Add comment and close task
-```bash
-curl -s -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"taskId": "<taskId>", "comment": "Done in PR #42"}' \
-  "$KANEO_BASE_URL/activity/comment"
-
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "done"}' \
-  "$KANEO_BASE_URL/task/status/<taskId>"
-```
-
-### Find task by title and update description
-```bash
-SEARCH=$(curl -s -H "Authorization: Bearer $KANEO_TOKEN" \
-  "$KANEO_BASE_URL/search?q=user+auth&type=tasks&workspaceId=<workspaceId>")
-TASK_ID=$(echo $SEARCH | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"description": "Updated after code review"}' \
-  "$KANEO_BASE_URL/task/description/$TASK_ID"
-```
-
-### Create label and attach to task
-```bash
-LABEL=$(curl -s -X POST \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"blocked","color":"#ef4444","workspaceId":"<workspaceId>"}' \
-  "$KANEO_BASE_URL/label")
-LABEL_ID=$(echo $LABEL | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-curl -X PUT \
-  -H "Authorization: Bearer $KANEO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"taskId":"<taskId>"}' \
-  "$KANEO_BASE_URL/label/$LABEL_ID/task"
-```
-
-### Reconcile `docs/LABELS.md` from workspace labels
-```bash
-# 1) Pull labels from API
-curl -s -H "Authorization: Bearer $KANEO_TOKEN" \
-  "$KANEO_BASE_URL/label/workspace/<workspaceId>"
-
-# 2) Update docs/LABELS.md:
-#    - Add missing labels
-#    - Update name/color changes
-#    - Mark removed labels as deprecated
-#    - Update Last synced timestamp
-```
+Uses: `kaneo_search`
 
 ---
 
 ## Error Handling
 
-- `400` — missing required fields
-- `401` — invalid or missing bearer token
-- `403` — no access to workspace/project
-- `404` — task/project/workspace not found
-- `500` — Kaneo server error
+MCP tool responses include:
+- Success: standard response with data
+- Error: error message with code
 
-Check HTTP status code and response body for details.
+Common issues:
+- Missing credentials → MCP server won't start
+- Invalid token → 401 in tool response
+- Invalid IDs → 404 in tool response
+
+Check tool response for details.

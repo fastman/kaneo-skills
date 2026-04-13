@@ -1,0 +1,12 @@
+{
+  "mcp": {
+    "kaneo": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-kaneo"],
+      "environment": {
+        "KANEO_BASE_URL": "${KANEO_BASE_URL}",
+        "KANEO_TOKEN": "${KANEO_TOKEN}"
+      }
+    }
+  }
+}
