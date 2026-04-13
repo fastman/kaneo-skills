@@ -7,7 +7,7 @@ metadata:
   audience: developers
   topic: project-management
   api: kaneo
-  version: 2.0.0
+  version: 2.1.0
 ---
 
 # Kaneo — Task Management
@@ -47,7 +47,7 @@ Required variables (set in your agent's MCP config):
   "mcpServers": {
     "kaneo": {
       "command": "npx",
-      "args": ["-y", "mcp-kaneo"],
+      "args": ["-y", "@fastman/mcp-kaneo"],
       "env": {
         "KANEO_TOKEN": "${KANEO_TOKEN}",
         "KANEO_BASE_URL": "${KANEO_BASE_URL}"
@@ -63,7 +63,7 @@ Required variables (set in your agent's MCP config):
   "mcp": {
     "kaneo": {
       "type": "local",
-      "command": ["npx", "-y", "mcp-kaneo"],
+      "command": ["npx", "-y", "@fastman/mcp-kaneo"],
       "environment": {
         "KANEO_BASE_URL": "${KANEO_BASE_URL}",
         "KANEO_TOKEN": "${KANEO_TOKEN}"
@@ -79,7 +79,7 @@ Required variables (set in your agent's MCP config):
   "mcpServers": {
     "kaneo": {
       "command": "npx",
-      "args": ["-y", "mcp-kaneo"]
+      "args": ["-y", "@fastman/mcp-kaneo"]
     }
   }
 }
