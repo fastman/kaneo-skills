@@ -7,7 +7,7 @@ metadata:
   audience: developers
   topic: project-management
   api: kaneo
-  version: 2.1.0
+  version: 2.2.0
 ---
 
 # Kaneo — Task Management
@@ -156,6 +156,8 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 | `kaneo_list_projects` | List projects in a workspace |
 | `kaneo_get_project` | Get project details |
 | `kaneo_create_project` | Create a new project |
+| `kaneo_update_project` | Update an existing project |
+| `kaneo_delete_project` | Delete a project |
 
 ### Tasks
 
@@ -170,6 +172,7 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 | `kaneo_update_task_assignee` | Update task assignee |
 | `kaneo_update_task_due_date` | Update task due date |
 | `kaneo_delete_task` | Delete a task |
+| `kaneo_list_columns` | List columns in a project |
 
 ### Labels
 
@@ -189,6 +192,8 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 |------|-------------|
 | `kaneo_add_comment` | Add comment to task |
 | `kaneo_list_comments` | List comments on task |
+| `kaneo_edit_comment` | Edit a comment |
+| `kaneo_delete_comment` | Delete a comment |
 
 ### Search
 
@@ -218,6 +223,12 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 Kaneo has no native subtask feature. Use this convention:
 - Create a task and reference the parent in the description: `[Parent #12] Fix login bug`
 - Or reference child tasks in the parent: `[Child #13], [Child #14]`
+
+### API Tool
+
+| Tool | Description |
+|------|-------------|
+| `kaneo_list_subtasks` | List subtasks of a parent task |
 
 This is a community convention, not an API feature.
 
@@ -254,6 +265,24 @@ Uses: `kaneo_create_label` → `kaneo_attach_label`
 Find all tasks with "authentication" in the title
 ```
 Uses: `kaneo_search`
+
+### List columns
+```
+List columns in the "Kaneo MCP" project
+```
+Uses: `kaneo_list_columns`
+
+### Update project
+```
+Rename the "Frontend" project to "Frontend Development"
+```
+Uses: `kaneo_update_project`
+
+### Delete a comment
+```
+Delete the comment #3 from task #12
+```
+Uses: `kaneo_delete_comment`
 
 ---
 
