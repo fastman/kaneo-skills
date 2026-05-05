@@ -7,7 +7,7 @@ metadata:
   audience: developers
   topic: project-management
   api: kaneo
-  version: 2.2.0
+  version: 2.3.0
 ---
 
 # Kaneo — Task Management
@@ -148,6 +148,9 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 | Tool | Description |
 |------|-------------|
 | `kaneo_list_workspaces` | List all accessible workspaces |
+| `kaneo_get_workspace` | Get workspace details |
+| `kaneo_update_workspace` | Update workspace (name, slug, icon) |
+| `kaneo_delete_workspace` | Delete a workspace |
 
 ### Projects
 
@@ -173,6 +176,8 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 | `kaneo_update_task_due_date` | Update task due date |
 | `kaneo_delete_task` | Delete a task |
 | `kaneo_list_columns` | List columns in a project |
+| `kaneo_create_subtask` | Create a native subtask |
+| `kaneo_list_subtasks` | List subtasks of a parent task |
 
 ### Labels
 
@@ -201,6 +206,14 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 |------|-------------|
 | `kaneo_search` | Search tasks, projects, workspaces |
 
+### Task Relations
+
+| Tool | Description |
+|------|-------------|
+| `kaneo_create_task_relation` | Create relation between tasks (subtask, blocks, related) |
+| `kaneo_list_task_relations` | List all relations for a task |
+| `kaneo_delete_task_relation` | Delete a task relation |
+
 ---
 
 ## Task Fields
@@ -220,17 +233,64 @@ When this skill is used in a code project, maintain `docs/LABELS.md`.
 
 ## Subtasks
 
-Kaneo has no native subtask feature. Use this convention:
-- Create a task and reference the parent in the description: `[Parent #12] Fix login bug`
-- Or reference child tasks in the parent: `[Child #13], [Child #14]`
+Kaneo supports native subtasks via the Task Relations API.
 
-### API Tool
+### API Tools
 
 | Tool | Description |
 |------|-------------|
+| `kaneo_create_subtask` | Create a subtask linked to a parent task |
 | `kaneo_list_subtasks` | List subtasks of a parent task |
 
-This is a community convention, not an API feature.
+### Usage
+
+Create a subtask:
+```
+Create a subtask "Fix the login validation" for parent task #123
+```
+Uses: `kaneo_create_subtask` (creates task + relation automatically)
+
+List subtasks:
+```
+List all subtasks for task #123
+```
+Uses: `kaneo_list_subtasks`
+
+---
+
+## Task Relations
+
+Create relations between tasks: subtasks, blocking relationships, or general links.
+
+### Relation Types
+
+| Type | Description |
+|------|-------------|
+| `subtask` | Child task (also creates Kaneo native subtask) |
+| `blocks` | This task blocks another task |
+| `related` | General relation between tasks |
+
+### API Tools
+
+| Tool | Description |
+|------|-------------|
+| `kaneo_create_task_relation` | Create a relation between two tasks |
+| `kaneo_list_task_relations` | List all relations for a task |
+| `kaneo_delete_task_relation` | Delete a task relation |
+
+### Usage
+
+Create a blocking relation:
+```
+Task #5 blocks task #10
+```
+Uses: `kaneo_create_task_relation`
+
+List relations:
+```
+Show all tasks that block task #10
+```
+Uses: `kaneo_list_task_relations`
 
 ---
 
@@ -283,6 +343,18 @@ Uses: `kaneo_update_project`
 Delete the comment #3 from task #12
 ```
 Uses: `kaneo_delete_comment`
+
+### Create a subtask
+```
+Create a subtask "Investigate bug" for parent task #5
+```
+Uses: `kaneo_create_subtask`
+
+### Create task relation
+```
+Mark task #10 as blocking task #20
+```
+Uses: `kaneo_create_task_relation`
 
 ---
 
